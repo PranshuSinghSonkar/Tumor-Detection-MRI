@@ -11,10 +11,7 @@
 
 .env
 
-# ML models
 
-models/
-*.keras
 
 # Data & outputs
 
