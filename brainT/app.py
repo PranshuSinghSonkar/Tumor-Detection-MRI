@@ -15,7 +15,7 @@ UPLOAD_FOLDER = "static/uploads"
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
 
 
 def allowed_file(filename: str) -> bool:
@@ -67,10 +67,13 @@ def predict():
     original_name = secure_filename(file.filename)
     ext = original_name.rsplit(".", 1)[1].lower()
     unique_name = f"{uuid.uuid4().hex}.{ext}"
-    filepath = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
-    file.save(filepath)
+    relative_path = os.path.join(app.config["UPLOAD_FOLDER"], unique_name)
+    absolute_path = os.path.join(app.root_path, relative_path)
 
-    image = Image.open(filepath).convert("RGB")
+    os.makedirs(os.path.dirname(absolute_path), exist_ok=True)
+    file.save(absolute_path)
+
+    image = Image.open(absolute_path).convert("RGB")
     batch = preprocess_pil_image(image, IMG_SIZE)
 
     raw_probabilities = model.predict(batch, verbose=0)[0]
@@ -96,11 +99,12 @@ def predict():
         "result.html",
         prediction=prediction,
         confidence=confidence,
-        image_file=filepath,
+        image_file=relative_path,
         probabilities=probability_items,
         uploaded_name=original_name,
     )
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host="0.0.0.0", port=port, debug=False)
