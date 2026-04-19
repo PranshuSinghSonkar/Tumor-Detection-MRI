@@ -6,3 +6,4 @@ Pillow
 Werkzeug
 matplotlib
 h5py
+streamlit
