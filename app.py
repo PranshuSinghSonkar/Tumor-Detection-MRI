@@ -9,69 +9,68 @@ from werkzeug.utils import secure_filename
 from src.config import IMG_SIZE
 from src.utils import load_class_names, preprocess_pil_image
 
-app = Flask(__name__, template_folder="templates", static_folder="static")
+app = Flask(**name**, template_folder="templates", static_folder="static")
 
-# 🔥 BASE DIRECTORY FIX (IMPORTANT)
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# Base directory
 
-# 🔥 FIXED PATHS (ABSOLUTE)
+BASE_DIR = os.path.dirname(os.path.abspath(**file**))
+
+# Paths
+
 MODEL_PATH = os.path.join(BASE_DIR, "models", "brain_tumor_classifier.keras")
 CLASS_NAMES_PATH = os.path.join(BASE_DIR, "models", "class_names.json")
-
 UPLOAD_FOLDER = os.path.join(BASE_DIR, "static", "uploads")
+
 ALLOWED_EXTENSIONS = {"png", "jpg", "jpeg"}
 
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
-os.makedirs(app.config["UPLOAD_FOLDER"], exist_ok=True)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# Lazy-loaded globals
+
+model = None
+class_names = None
 
 def allowed_file(filename: str) -> bool:
-    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
-
+return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def prettify_label(label: str) -> str:
-    return str(label).replace("_", " ").replace("-", " ").title()
-
+return str(label).replace("_", " ").replace("-", " ").title()
 
 def load_assets():
-    # 🔥 Load model using absolute path
-    model = keras.models.load_model(MODEL_PATH)
-    class_names = load_class_names(CLASS_NAMES_PATH)
-    return model, class_names
+if not os.path.exists(MODEL_PATH) or not os.path.exists(CLASS_NAMES_PATH):
+raise FileNotFoundError("Model files missing")
 
+```
+model = keras.models.load_model(MODEL_PATH)
+class_names = load_class_names(CLASS_NAMES_PATH)
+return model, class_names
+```
 
-# 🔥 LOAD ON START
+def get_model():
+global model, class_names
+if model is None or class_names is None:
 model, class_names = load_assets()
-
+return model, class_names
 
 @app.route("/")
 def home():
-    if not os.path.exists(MODEL_PATH) or not os.path.exists(CLASS_NAMES_PATH):
-        return (
-            "Model files are missing. Ensure models/ contains "
-            "brain_tumor_classifier.keras and class_names.json"
-        )
-    return render_template("index.html")
-
+return render_template("index.html")
 
 @app.route("/predict", methods=["POST"])
 def predict():
-    if not os.path.exists(MODEL_PATH) or not os.path.exists(CLASS_NAMES_PATH):
-        return (
-            "Model files are missing. Ensure models/ contains "
-            "brain_tumor_classifier.keras and class_names.json"
-        )
+try:
+if "file" not in request.files:
+return "No file uploaded"
 
-    if "file" not in request.files:
-        return "No file part in request"
-
+```
     file = request.files["file"]
 
     if file.filename == "":
         return "No file selected"
 
     if not allowed_file(file.filename):
-        return "Invalid file type. Please upload JPG, JPEG, or PNG."
+        return "Invalid file type"
 
     original_name = secure_filename(file.filename)
     ext = original_name.rsplit(".", 1)[1].lower()
@@ -85,6 +84,8 @@ def predict():
 
     image = Image.open(absolute_path).convert("RGB")
     batch = preprocess_pil_image(image, IMG_SIZE)
+
+    model, class_names = get_model()
 
     raw_probabilities = model.predict(batch, verbose=0)[0]
     best_idx = int(np.argmax(raw_probabilities))
@@ -114,7 +115,10 @@ def predict():
         uploaded_name=original_name,
     )
 
+except Exception as e:
+    return f"Error occurred: {str(e)}"
+```
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+if **name** == "**main**":
+port = int(os.environ.get("PORT", 8080))
+app.run(host="0.0.0.0", port=port)
